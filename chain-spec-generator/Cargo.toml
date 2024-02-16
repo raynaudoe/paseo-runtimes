@@ -34,3 +34,13 @@ cumulus-primitives-core = { version = "0.4.0" }
 runtime-benchmarks = [
 	"paseo-runtime/runtime-benchmarks"
 ]
+
+[profile.release]
+# Paseo runtime requires unwinding.
+panic = "unwind"
+opt-level = 3
+
+[profile.production]
+inherits = "release"
+lto = true
+codegen-units = 1
