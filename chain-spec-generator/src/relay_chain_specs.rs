@@ -191,7 +191,7 @@ pub fn paseo_testnet_genesis(
 	let endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(testnet_accounts);
 
 	const ENDOWMENT: u128 = 1_000_000 * PAS;
-	const STASH: u128 = 100 * PAS;
+	const STASH: u128 = 1_000_000 * PAS;
 
 	serde_json::json!({
 		"balances": {
