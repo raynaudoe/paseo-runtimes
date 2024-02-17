@@ -1,19 +1,19 @@
-// Copyright (C) Parity Technologies and the various Polkadot contributors, see Contributions.md
+// Copyright (C) Parity Technologies and the various Paseo contributors, see Contributions.md
 // for a list of specific contributors.
-// This file is part of Polkadot.
+// This file is part of Paseo.
 
-// Polkadot is free software: you can redistribute it and/or modify
+// Paseo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Polkadot is distributed in the hope that it will be useful,
+// Paseo is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with Polkadot.  If not, see <http://www.gnu.org/licenses/>.
+// along with Paseo.  If not, see <http://www.gnu.org/licenses/>.
 
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use pallet_staking::Forcing;
@@ -30,9 +30,7 @@ use sp_runtime::{traits::IdentifyAccount, Perbill};
 
 pub type PaseoChainSpec = sc_chain_spec::GenericChainSpec<(), NoExtension>;
 
-pub type KusamaChainSpec = sc_chain_spec::GenericChainSpec<(), NoExtension>;
-
-const DEFAULT_PROTOCOL_ID: &str = "dot";
+const DEFAULT_PROTOCOL_ID: &str = "pas";
 
 /// Returns the properties for the [`PaseoChainSpec`].
 pub fn paseo_chain_spec_properties() -> serde_json::map::Map<String, serde_json::Value> {
@@ -247,7 +245,7 @@ fn paseo_development_config_genesis() -> serde_json::Value {
 	)
 }
 
-/// Polkadot development config (single validator Alice)
+/// Paseo development config (single validator Alice)
 pub fn paseo_development_config() -> Result<Box<dyn ChainSpec>, String> {
     Ok(Box::new(PaseoChainSpec::from_genesis(
         "Paseo Testnet",
@@ -271,12 +269,12 @@ fn paseo_local_testnet_genesis() -> serde_json::Value {
 	)
 }
 
-/// Polkadot local testnet config (multivalidator Alice + Bob)
+/// Paseo local testnet config (multivalidator Alice + Bob)
 pub fn paseo_local_testnet_config() -> Result<Box<dyn ChainSpec>, String> {
     Ok(Box::new(PaseoChainSpec::from_genesis(
         "Paseo Testnet",
         "paseo",
-        ChainType::Live,
+        ChainType::Local,
         move || {paseo_local_testnet_genesis();},
         vec![],
         None,
