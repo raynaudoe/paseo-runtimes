@@ -66,8 +66,13 @@ pub fn from_json_file(filepath: &str, supported: String) -> Result<Box<dyn Chain
 	let reader = std::io::BufReader::new(file);
 	let chain_spec: EmptyChainSpecWithId = serde_json::from_reader(reader)
 		.expect("Failed to read 'json' file with ChainSpec configuration");
+    match &chain_spec.id {
+        x if x.starts_with("paseo") | x.starts_with("pas") => {
 
-
-		Ok(Box::new(PaseoChainSpec::from_json_file(path)?))
-
+			Ok(Box::new(PaseoChainSpec::from_json_file(path)?))
+        }
+        _ => Err(format!(
+            "Unknown chain 'id' in json file. Only supported: {supported}'"
+        )),
+    }
 }
