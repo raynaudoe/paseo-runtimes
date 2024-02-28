@@ -20,20 +20,20 @@
 //! DATE: 2023-12-19, STEPS: `50`, REPEAT: `20`, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! WORST CASE MAP SIZE: `1000000`
 //! HOSTNAME: `ggwpez-ref-hw`, CPU: `Intel(R) Xeon(R) CPU @ 2.60GHz`
-//! WASM-EXECUTION: `Compiled`, CHAIN: `Some("../asset-hub-polkadot-chain-spec.json")`, DB CACHE: 1024
+//! WASM-EXECUTION: `Compiled`, CHAIN: `Some("../bridge-hub-polkadot-chain-spec.json")`, DB CACHE: 1024
 
 // Executed Command:
 // ./target/production/polkadot
 // benchmark
 // pallet
-// --chain=../asset-hub-polkadot-chain-spec.json
+// --chain=../bridge-hub-polkadot-chain-spec.json
 // --steps=50
 // --repeat=20
 // --pallet=pallet_timestamp
 // --extrinsic=*
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --output=./asset-hub-polkadot-weights
+// --output=./bridge-hub-polkadot-weights
 // --header=./file_header.txt
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
@@ -53,10 +53,10 @@ impl<T: frame_system::Config> pallet_timestamp::WeightInfo for WeightInfo<T> {
 	/// Proof: `Aura::CurrentSlot` (`max_values`: Some(1), `max_size`: Some(8), added: 503, mode: `MaxEncodedLen`)
 	fn set() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `86`
+		//  Measured:  `49`
 		//  Estimated: `1493`
-		// Minimum execution time: 6_839_000 picoseconds.
-		Weight::from_parts(7_171_000, 0)
+		// Minimum execution time: 5_639_000 picoseconds.
+		Weight::from_parts(5_920_000, 0)
 			.saturating_add(Weight::from_parts(0, 1493))
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
@@ -65,8 +65,8 @@ impl<T: frame_system::Config> pallet_timestamp::WeightInfo for WeightInfo<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `57`
 		//  Estimated: `0`
-		// Minimum execution time: 2_834_000 picoseconds.
-		Weight::from_parts(3_106_000, 0)
+		// Minimum execution time: 2_851_000 picoseconds.
+		Weight::from_parts(2_983_000, 0)
 			.saturating_add(Weight::from_parts(0, 0))
 	}
 }

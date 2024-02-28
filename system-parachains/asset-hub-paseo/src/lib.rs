@@ -13,15 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # Asset Hub Paseo Runtime
+//! # Asset Hub Polkadot Runtime
 //!
-//! Asset Hub Paseo is a parachain that provides an interface to create, manage, and use assets.
+//! Asset Hub Polkadot is a parachain that provides an interface to create, manage, and use assets.
 //! Assets may be fungible or non-fungible.
 //!
 //! ## Renaming
 //!
 //! This chain was originally known as "Statemint". You may see references to Statemint, Statemine,
-//! and Westmint throughout the codebase. These are synonymous with "Asset Hub Paseo, Kusama, and
+//! and Westmint throughout the codebase. These are synonymous with "Asset Hub Polkadot, Kusama, and
 //! Westend", respectively.
 //!
 //! ## Assets
@@ -33,12 +33,12 @@
 //!
 //! ### Native Balances
 //!
-//! Asset Hub Paseo uses its parent PAS token as its native asset.
+//! Asset Hub Polkadot uses its parent DOT token as its native asset.
 //!
 //! ### Governance
 //!
 //! As a system parachain, Asset Hub defers its governance (namely, its `Root` origin), to its
-//! Relay Chain parent, Paseo.
+//! Relay Chain parent, Polkadot.
 //!
 //! ### Collator Selection
 //!
@@ -49,7 +49,7 @@
 //! ### XCM
 //!
 //! Because Asset Hub is fully under the control of the Relay Chain, it is meant to be a
-//! `TrustedTeleporter`. It can also serve as a reserve location to other parachains for PAS as well
+//! `TrustedTeleporter`. It can also serve as a reserve location to other parachains for DOT as well
 //! as other local assets.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -84,10 +84,11 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
+	genesis_builder_helper::{build_config, create_default_config},
 	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse,
-		InstanceFilter,
+		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Equals,
+		InstanceFilter, OnRuntimeUpgrade,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -97,15 +98,18 @@ use frame_system::{
 	EnsureRoot, EnsureSigned,
 };
 use pallet_nfts::PalletFeatures;
-pub use parachains_common as common;
 use parachains_common::{
 	impls::{AssetsToBlockAuthor, DealWithFees},
-	polkadot::{consensus::*, currency::*, fee::WeightToFee},
 	AccountId, AssetHubPolkadotAuraId as AuraId, AssetIdForTrustBackedAssets, Balance, BlockNumber,
-	Hash, Header, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO, DAYS, HOURS, MAXIMUM_BLOCK_WEIGHT,
-	NORMAL_DISPATCH_RATIO, SLOT_DURATION,
+	Hash, Header, Nonce, Signature,
 };
+
 use sp_runtime::RuntimeDebug;
+use system_parachains_constants::{
+	polkadot::{consensus::*, currency::*, fee::WeightToFee},
+	AVERAGE_ON_INITIALIZE_RATIO, DAYS, HOURS, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
+	SLOT_DURATION,
+};
 use xcm_config::{
 	DotLocation, FellowshipLocation, ForeignAssetsConvertedConcreteId, GovernanceLocation,
 	TrustBackedAssetsConvertedConcreteId, XcmConfig, XcmOriginToTransactDispatchOrigin,
@@ -114,10 +118,10 @@ use xcm_config::{
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-// Paseo imports
+// Polkadot imports
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
-use xcm::latest::BodyId;
+use xcm::prelude::*;
 use xcm_executor::XcmExecutor;
 
 use crate::xcm_config::ForeignCreatorsSovereignAccountOf;
@@ -137,10 +141,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("statemint"),
 	impl_name: create_runtime_str!("statemint"),
 	authoring_version: 1,
-	spec_version: 1_000_000,
+	spec_version: 1_001_002,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 13,
+	transaction_version: 14,
 	state_version: 0,
 };
 
@@ -216,7 +220,9 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT;
+	// This comes from system_parachains_constants::polkadot::currency and is the ED for all system
+	// parachains. For Asset Hub in particular, we set it to 1/10th of the amount.
+	pub const ExistentialDeposit: Balance = SYSTEM_PARA_EXISTENTIAL_DEPOSIT / 10;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -232,6 +238,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type FreezeIdentifier = ();
 	type MaxHolds = ConstU32<0>;
 	type MaxFreezes = ConstU32<0>;
@@ -254,13 +261,12 @@ impl pallet_transaction_payment::Config for Runtime {
 
 parameter_types! {
 	pub const AssetDeposit: Balance = 10 * UNITS; // 10 UNITS deposit to create fungible asset class
-	pub const AssetAccountDeposit: Balance = deposit(1, 16);
-	pub const ApprovalDeposit: Balance = EXISTENTIAL_DEPOSIT;
+	pub const AssetAccountDeposit: Balance = system_para_deposit(1, 16);
 	pub const AssetsStringLimit: u32 = 50;
 	/// Key = 32 bytes, Value = 36 bytes (32+1+1+1+1)
 	// https://github.com/paritytech/substrate/blob/069917b/frame/assets/src/lib.rs#L257L271
-	pub const MetadataDepositBase: Balance = deposit(1, 68);
-	pub const MetadataDepositPerByte: Balance = deposit(0, 1);
+	pub const MetadataDepositBase: Balance = system_para_deposit(1, 68);
+	pub const MetadataDepositPerByte: Balance = system_para_deposit(0, 1);
 }
 
 /// We allow root to execute privileged asset operations.
@@ -282,7 +288,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type AssetDeposit = AssetDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
-	type ApprovalDeposit = ApprovalDeposit;
+	type ApprovalDeposit = ExistentialDeposit;
 	type StringLimit = AssetsStringLimit;
 	type Freezer = ();
 	type Extra = ();
@@ -298,7 +304,6 @@ parameter_types! {
 	// we just reuse the same deposits
 	pub const ForeignAssetsAssetDeposit: Balance = AssetDeposit::get();
 	pub const ForeignAssetsAssetAccountDeposit: Balance = AssetAccountDeposit::get();
-	pub const ForeignAssetsApprovalDeposit: Balance = ApprovalDeposit::get();
 	pub const ForeignAssetsAssetsStringLimit: u32 = AssetsStringLimit::get();
 	pub const ForeignAssetsMetadataDepositBase: Balance = MetadataDepositBase::get();
 	pub const ForeignAssetsMetadataDepositPerByte: Balance = MetadataDepositPerByte::get();
@@ -324,7 +329,7 @@ impl pallet_assets::Config<ForeignAssetsInstance> for Runtime {
 	type AssetDeposit = ForeignAssetsAssetDeposit;
 	type MetadataDepositBase = ForeignAssetsMetadataDepositBase;
 	type MetadataDepositPerByte = ForeignAssetsMetadataDepositPerByte;
-	type ApprovalDeposit = ForeignAssetsApprovalDeposit;
+	type ApprovalDeposit = ExistentialDeposit;
 	type StringLimit = ForeignAssetsAssetsStringLimit;
 	type Freezer = ();
 	type Extra = ();
@@ -338,9 +343,9 @@ impl pallet_assets::Config<ForeignAssetsInstance> for Runtime {
 
 parameter_types! {
 	// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const DepositBase: Balance = deposit(1, 88);
+	pub const DepositBase: Balance = system_para_deposit(1, 88);
 	// Additional storage item size of 32 bytes.
-	pub const DepositFactor: Balance = deposit(0, 32);
+	pub const DepositFactor: Balance = system_para_deposit(0, 32);
 	pub const MaxSignatories: u32 = 100;
 }
 
@@ -363,13 +368,13 @@ impl pallet_utility::Config for Runtime {
 
 parameter_types! {
 	// One storage item; key size 32, value size 8; .
-	pub const ProxyDepositBase: Balance = deposit(1, 40);
+	pub const ProxyDepositBase: Balance = system_para_deposit(1, 40);
 	// Additional storage item size of 33 bytes.
-	pub const ProxyDepositFactor: Balance = deposit(0, 33);
+	pub const ProxyDepositFactor: Balance = system_para_deposit(0, 33);
 	pub const MaxProxies: u16 = 32;
 	// One storage item; key size 32, value size 16
-	pub const AnnouncementDepositBase: Balance = deposit(1, 48);
-	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
+	pub const AnnouncementDepositBase: Balance = system_para_deposit(1, 48);
+	pub const AnnouncementDepositFactor: Balance = system_para_deposit(0, 66);
 	pub const MaxPending: u16 = 32;
 }
 
@@ -566,7 +571,25 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 parameter_types! {
 	// Fellows pluralistic body.
 	pub const FellowsBodyId: BodyId = BodyId::Technical;
+	/// The asset ID for the asset that we use to pay for message delivery fees.
+	pub FeeAssetId: AssetId = Concrete(xcm_config::DotLocation::get());
+	/// The base fee for the message delivery fees.
+	pub const ToSiblingBaseDeliveryFee: u128 = CENTS.saturating_mul(3);
+	pub const ToParentBaseDeliveryFee: u128 = CENTS.saturating_mul(3);
 }
+
+pub type PriceForSiblingParachainDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
+	FeeAssetId,
+	ToSiblingBaseDeliveryFee,
+	TransactionByteFee,
+	XcmpQueue,
+>;
+pub type PriceForParentDelivery = polkadot_runtime_common::xcm_sender::ExponentialPrice<
+	FeeAssetId,
+	ToParentBaseDeliveryFee,
+	TransactionByteFee,
+	ParachainSystem,
+>;
 
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
@@ -580,7 +603,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 		EnsureXcm<IsVoiceOfBody<FellowshipLocation, FellowsBodyId>>,
 	>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	type PriceForSiblingDelivery = ();
+	type PriceForSiblingDelivery = PriceForSiblingParachainDelivery;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -663,9 +686,9 @@ impl pallet_asset_tx_payment::Config for Runtime {
 parameter_types! {
 	pub const UniquesCollectionDeposit: Balance = 10 * UNITS; // 10 UNIT deposit to create uniques class
 	pub const UniquesItemDeposit: Balance = UNITS / 100; // 1 / 100 UNIT deposit to create uniques instance
-	pub const UniquesMetadataDepositBase: Balance = deposit(1, 129);
-	pub const UniquesAttributeDepositBase: Balance = deposit(1, 0);
-	pub const UniquesDepositPerByte: Balance = deposit(0, 1);
+	pub const UniquesMetadataDepositBase: Balance = system_para_deposit(1, 129);
+	pub const UniquesAttributeDepositBase: Balance = system_para_deposit(1, 0);
+	pub const UniquesDepositPerByte: Balance = system_para_deposit(0, 1);
 }
 
 impl pallet_uniques::Config for Runtime {
@@ -729,6 +752,37 @@ impl pallet_nfts::Config for Runtime {
 	type Helper = ();
 }
 
+/// XCM router instance to BridgeHub with bridging capabilities for `Kusama` global
+/// consensus with dynamic fees and back-pressure.
+pub type ToKusamaXcmRouterInstance = pallet_xcm_bridge_hub_router::Instance1;
+impl pallet_xcm_bridge_hub_router::Config<ToKusamaXcmRouterInstance> for Runtime {
+	type WeightInfo = weights::pallet_xcm_bridge_hub_router::WeightInfo<Runtime>;
+
+	type UniversalLocation = xcm_config::UniversalLocation;
+	type BridgedNetworkId = xcm_config::bridging::to_kusama::KusamaNetwork;
+	type Bridges = xcm_config::bridging::NetworkExportTable;
+
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type BridgeHubOrigin = EnsureXcm<Equals<xcm_config::bridging::SiblingBridgeHub>>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BridgeHubOrigin = frame_support::traits::EitherOfDiverse<
+		// for running benchmarks
+		EnsureRoot<AccountId>,
+		// for running tests with `--feature runtime-benchmarks`
+		EnsureXcm<Equals<xcm_config::bridging::SiblingBridgeHub>>,
+	>;
+
+	type ToBridgeHubSender = XcmpQueue;
+	type WithBridgeHubChannel =
+		cumulus_pallet_xcmp_queue::bridging::InAndOutXcmpChannelStatusProvider<
+			xcm_config::bridging::SiblingBridgeHubParaId,
+			Runtime,
+		>;
+
+	type ByteFee = xcm_config::bridging::XcmBridgeHubRouterByteFee;
+	type FeeAsset = xcm_config::bridging::XcmBridgeHubRouterFeeAssetId;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime
@@ -759,6 +813,7 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Event<T>, Origin, Config<T>} = 31,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 32,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 33,
+		ToKusamaXcmRouter: pallet_xcm_bridge_hub_router::<Instance1>::{Pallet, Storage, Call} = 34,
 
 		// Handy utilities.
 		Utility: pallet_utility::{Pallet, Call, Event} = 40,
@@ -797,44 +852,14 @@ pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// Migrations to apply on runtime upgrade.
 pub type Migrations =
-	(pallet_collator_selection::migration::v1::MigrateToV1<Runtime>, InitStorageVersions);
+	frame_support::migrations::VersionedMigration<0, 1, UniquesMigration, Uniques, RocksDbWeight>;
 
-/// Migration to initialize storage versions for pallets added after genesis.
-///
-/// Ideally this would be done automatically (see
-/// <https://github.com/paritytech/polkadot-sdk/pull/1297>), but it probably won't be ready for some
-/// time and it's beneficial to get storage version issues smoothed over before merging
-/// <https://github.com/polkadot-fellows/runtimes/pull/28> so we're just setting them manually.
-pub struct InitStorageVersions;
+/// Migration for Uniques to V1
+pub struct UniquesMigration;
 
-impl frame_support::traits::OnRuntimeUpgrade for InitStorageVersions {
+impl OnRuntimeUpgrade for UniquesMigration {
 	fn on_runtime_upgrade() -> Weight {
-		use frame_support::traits::{GetStorageVersion, StorageVersion};
-		use sp_runtime::traits::Saturating;
-
-		let mut writes = 0;
-
-		if Multisig::on_chain_storage_version() == StorageVersion::new(0) {
-			Multisig::current_storage_version().put::<Multisig>();
-			writes.saturating_inc();
-		}
-
-		if PolkadotXcm::on_chain_storage_version() == StorageVersion::new(0) {
-			PolkadotXcm::current_storage_version().put::<PolkadotXcm>();
-			writes.saturating_inc();
-		}
-
-		if Nfts::on_chain_storage_version() == StorageVersion::new(0) {
-			Nfts::current_storage_version().put::<Nfts>();
-			writes.saturating_inc();
-		}
-
-		if ForeignAssets::on_chain_storage_version() == StorageVersion::new(0) {
-			ForeignAssets::current_storage_version().put::<ForeignAssets>();
-			writes.saturating_inc();
-		}
-
-		<Runtime as frame_system::Config>::DbWeight::get().reads_writes(4, writes)
+		pallet_uniques::migration::migrate_to_v1::<Runtime, (), pallet_uniques::Pallet<Runtime>>()
 	}
 }
 
@@ -870,6 +895,8 @@ mod benches {
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		// XCM
 		[pallet_xcm, PolkadotXcm]
+		// Bridges
+		[pallet_xcm_bridge_hub_router, ToKusama]
 		// NOTE: Make sure you point to the individual modules below.
 		[pallet_xcm_benchmarks::fungible, XcmBalances]
 		[pallet_xcm_benchmarks::generic, XcmGeneric]
@@ -1054,6 +1081,16 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
+		fn create_default_config() -> Vec<u8> {
+			create_default_config::<RuntimeGenesisConfig>()
+		}
+
+		fn build_config(config: Vec<u8>) -> sp_genesis_builder::Result {
+			build_config::<RuntimeGenesisConfig>(config)
+		}
+	}
+
 	#[cfg(feature = "try-runtime")]
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
 		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
@@ -1083,6 +1120,7 @@ impl_runtime_apis! {
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_xcm_bridge_hub_router::benchmarking::Pallet as XcmBridgeHubRouterBench;
 
 			// This is defined once again in dispatch_benchmark, because list_benchmarks!
 			// and add_benchmarks! are macros exported by define_benchmarks! macros and those types
@@ -1096,6 +1134,8 @@ impl_runtime_apis! {
 			// `pallet_assets_local.rs / pallet_assets_foreign.rs`.
 			type Local = pallet_assets::Pallet::<Runtime, TrustBackedAssetsInstance>;
 			type Foreign = pallet_assets::Pallet::<Runtime, ForeignAssetsInstance>;
+
+			type ToKusama = XcmBridgeHubRouterBench<Runtime, ToKusamaXcmRouterInstance>;
 
 			let mut list = Vec::<BenchmarkList>::new();
 			list_benchmarks!(list, extra);
@@ -1129,9 +1169,21 @@ impl_runtime_apis! {
 			use xcm_config::{DotLocation, MaxAssetsIntoHolding};
 			use pallet_xcm_benchmarks::asset_instance_from;
 
+			parameter_types! {
+				pub ExistentialDepositMultiAsset: Option<MultiAsset> = Some((
+					DotLocation::get(),
+					ExistentialDeposit::get()
+				).into());
+			}
+
 			impl pallet_xcm_benchmarks::Config for Runtime {
 				type XcmConfig = xcm_config::XcmConfig;
 				type AccountIdConverter = xcm_config::LocationToAccountId;
+				type DeliveryHelper = cumulus_primitives_utility::ToParentDeliveryHelper<
+					xcm_config::XcmConfig,
+					ExistentialDepositMultiAsset,
+					PriceForParentDelivery,
+				>;
 				fn valid_destination() -> Result<MultiLocation, BenchmarkError> {
 					Ok(DotLocation::get())
 				}
@@ -1168,7 +1220,13 @@ impl_runtime_apis! {
 					MultiAsset { fun: Fungible(UNITS), id: Concrete(DotLocation::get()) },
 				));
 				pub const CheckedAccount: Option<(AccountId, xcm_builder::MintLocation)> = None;
-				pub const TrustedReserve: Option<(MultiLocation, MultiAsset)> = None;
+				// AssetHubPolkadot trusts AssetHubKusama as reserve for KSMs
+				pub TrustedReserve: Option<(MultiLocation, MultiAsset)> = Some(
+					(
+						xcm_config::bridging::to_kusama::AssetHubKusama::get(),
+						MultiAsset::from((xcm_config::bridging::to_kusama::KsmLocation::get(), 1000000000000 as u128))
+					)
+				);
 			}
 
 			impl pallet_xcm_benchmarks::fungible::Config for Runtime {
@@ -1187,6 +1245,7 @@ impl_runtime_apis! {
 			}
 
 			impl pallet_xcm_benchmarks::generic::Config for Runtime {
+				type TransactAsset = Balances;
 				type RuntimeCall = RuntimeCall;
 
 				fn worst_case_response() -> (u64, Response) {
@@ -1198,7 +1257,8 @@ impl_runtime_apis! {
 				}
 
 				fn universal_alias() -> Result<(MultiLocation, Junction), BenchmarkError> {
-					Err(BenchmarkError::Skip)
+					xcm_config::bridging::BridgingBenchmarksHelper::prepare_universal_alias()
+					.ok_or(BenchmarkError::Skip)
 				}
 
 				fn transact_origin_and_runtime_call() -> Result<(MultiLocation, RuntimeCall), BenchmarkError> {
@@ -1216,6 +1276,13 @@ impl_runtime_apis! {
 					Ok((origin, ticket, assets))
 				}
 
+				fn fee_asset() -> Result<MultiAsset, BenchmarkError> {
+					Ok(MultiAsset {
+						id: Concrete(DotLocation::get()),
+						fun: Fungible(1_000_000 * UNITS),
+					})
+				}
+
 				fn unlockable_asset() -> Result<(MultiLocation, MultiLocation, MultiAsset), BenchmarkError> {
 					Err(BenchmarkError::Skip)
 				}
@@ -1230,11 +1297,33 @@ impl_runtime_apis! {
 				}
 			}
 
+			use pallet_xcm_bridge_hub_router::benchmarking::{
+				Pallet as XcmBridgeHubRouterBench,
+				Config as XcmBridgeHubRouterConfig,
+			};
+
+			impl XcmBridgeHubRouterConfig<ToKusamaXcmRouterInstance> for Runtime {
+				fn make_congested() {
+					cumulus_pallet_xcmp_queue::bridging::suspend_channel_for_benchmarks::<Runtime>(
+						xcm_config::bridging::SiblingBridgeHubParaId::get().into()
+					);
+				}
+
+				fn ensure_bridged_target_destination() -> MultiLocation {
+					ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(
+						xcm_config::bridging::SiblingBridgeHubParaId::get().into()
+					);
+					xcm_config::bridging::to_kusama::AssetHubKusama::get()
+				}
+			}
+
 			type XcmBalances = pallet_xcm_benchmarks::fungible::Pallet::<Runtime>;
 			type XcmGeneric = pallet_xcm_benchmarks::generic::Pallet::<Runtime>;
 
 			type Local = pallet_assets::Pallet::<Runtime, TrustBackedAssetsInstance>;
 			type Foreign = pallet_assets::Pallet::<Runtime, ForeignAssetsInstance>;
+
+			type ToKusama = XcmBridgeHubRouterBench<Runtime, ToKusamaXcmRouterInstance>;
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -1269,9 +1358,9 @@ cumulus_pallet_parachain_system::register_validate_block! {
 mod tests {
 	use super::*;
 	use crate::{CENTS, MILLICENTS};
-	use parachains_common::polkadot::fee;
 	use sp_runtime::traits::Zero;
 	use sp_weights::WeightToFee;
+	use system_parachains_constants::polkadot::fee;
 
 	/// We can fit at least 1000 transfers in a block.
 	#[test]

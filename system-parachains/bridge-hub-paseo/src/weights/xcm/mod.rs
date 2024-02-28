@@ -18,6 +18,7 @@ mod pallet_xcm_benchmarks_fungible;
 mod pallet_xcm_benchmarks_generic;
 
 use crate::{xcm_config::MaxAssetsIntoHolding, Runtime};
+use codec::Encode;
 use frame_support::weights::Weight;
 use pallet_xcm_benchmarks_fungible::WeightInfo as XcmFungibleWeight;
 use pallet_xcm_benchmarks_generic::WeightInfo as XcmGeneric;
@@ -56,8 +57,8 @@ impl WeighMultiAssets for MultiAssets {
 	}
 }
 
-pub struct AssetHubPolkadotXcmWeight<Call>(core::marker::PhantomData<Call>);
-impl<Call> XcmWeightInfo<Call> for AssetHubPolkadotXcmWeight<Call> {
+pub struct BridgeHubPolkadotXcmWeight<Call>(core::marker::PhantomData<Call>);
+impl<Call> XcmWeightInfo<Call> for BridgeHubPolkadotXcmWeight<Call> {
 	fn withdraw_asset(assets: &MultiAssets) -> Weight {
 		assets.weigh_multi_assets(XcmFungibleWeight::<Runtime>::withdraw_asset())
 	}
@@ -209,10 +210,11 @@ impl<Call> XcmWeightInfo<Call> for AssetHubPolkadotXcmWeight<Call> {
 		XcmGeneric::<Runtime>::clear_transact_status()
 	}
 	fn universal_origin(_: &Junction) -> Weight {
-		XcmGeneric::<Runtime>::universal_origin()
-	}
-	fn export_message(_: &NetworkId, _: &Junctions, _: &Xcm<()>) -> Weight {
 		Weight::MAX
+	}
+	fn export_message(_: &NetworkId, _: &Junctions, inner: &Xcm<()>) -> Weight {
+		let inner_encoded_len = inner.encode().len() as u32;
+		XcmGeneric::<Runtime>::export_message(inner_encoded_len)
 	}
 	fn lock_asset(_: &MultiAsset, _: &MultiLocation) -> Weight {
 		Weight::MAX
