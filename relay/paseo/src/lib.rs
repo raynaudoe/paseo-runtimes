@@ -20,6 +20,7 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "512"]
 
+
 use pallet_transaction_payment::CurrencyAdapter;
 use runtime_common::{
     auctions, claims, crowdloan, impl_runtime_weights,
@@ -101,6 +102,9 @@ use xcm::{
     VersionedMultiLocation,
 };
 use xcm_builder::PayOverXcm;
+
+mod paras_sudo_wrapper;
+
 
 pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
@@ -579,6 +583,8 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 		>::submit_unsigned(v, t, a, d)
     }
 }
+
+impl paras_sudo_wrapper::Config for Runtime {}
 
 impl pallet_election_provider_multi_phase::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -1663,6 +1669,8 @@ construct_runtime! {
         // refer to block<N>. See issue #160 for details.
         Mmr: pallet_mmr = 201,
         BeefyMmrLeaf: pallet_beefy_mmr = 202,
+
+        ParasSudoWrapper: paras_sudo_wrapper = 250,
 
         // Sudo.
         Sudo: pallet_sudo::{Pallet, Call, Storage, Event<T>, Config<T>} = 255,

@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Polkadot.  If not, see <http://www.gnu.org/licenses/>.
 
+use hex_literal::hex;
 use crate::common::{get_account_id_from_seed, get_from_seed, testnet_accounts};
 use cumulus_primitives_core::ParaId;
 use parachains_common::{AccountId, AssetHubPolkadotAuraId, AuraId, Balance};
@@ -22,6 +23,7 @@ use sc_chain_spec::{ChainSpec, ChainSpecExtension, ChainSpecGroup, ChainType};
 use serde::{Deserialize, Serialize};
 use sp_core::sr25519;
 use sp_keyring::AccountKeyring::{Alice, Bob, Charlie};
+use sp_core::crypto::UncheckedInto;
 
 /// Generic extensions for Parachain ChainSpecs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
@@ -48,11 +50,11 @@ pub fn invulnerables_asset_hub_paseo() -> Vec<(AccountId, AssetHubPolkadotAuraId
 	vec![
 		(
 			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_from_seed::<AssetHubPolkadotAuraId>("Alice"),
+			hex!("2f430c4b3caebdb85bfe2ec034152fb2f110749b94283262bfb0226161f0b1f5").unchecked_into(),
 		),
 		(
 			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_from_seed::<AssetHubPolkadotAuraId>("Bob"),
+			hex!("b6948fc8c313e24313cf6a42227be8cbd96dc71e7449beb4be35ee61a942282c").unchecked_into(),
 		),
 	]
 }
