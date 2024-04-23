@@ -60,12 +60,8 @@ pub fn invulnerables_asset_hub_paseo_local() -> Vec<(AccountId, AuraId)> {
 pub fn invulnerables_asset_hub_paseo() -> Vec<(AccountId, AuraId)> {
 	vec![
 		(
-			hex!("0efe248e3ddcfcb4f29675b70fc0a8e2db66b65381c45d299427b60d05f76108").into(),
-			hex!("3a73f2eed5d458e4b427be3afbd20e6d7a0b6972f5295a0b1062a96fe6d83610").unchecked_into(),
-		),
-		(
-			hex!("8eef6710734f5d1e7d2eb303fa8f04e9bef65fb680647b24624723f95b868964").into(),
-			hex!("de05506c73f35cf0bd50652b719369c2e20be9bf2c8522bd6cb61059a0cb0033").unchecked_into(),
+			hex!("82c3105dbd4bb206428d8a8b7ea1f19965a0668dd583b06c3b75daa181fe654c").into(),
+			hex!("fa4b6619ab42edab48f2b970ec3be82795d1874ba1b702dc0e06a3042e470adf").unchecked_into(),
 		),
 	]
 }
