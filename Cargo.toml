@@ -186,6 +186,15 @@ tokio = { version = "1.36.0" }
 xcm-emulator = { version = "0.6.0" }
 paseo-runtime-constants = { package = "paseo-runtime-constants", path = "relay/paseo/constants", default-features = false }
 
+# Bridges
+bp-asset-hub-westend = { version = "0.4.0", default-features = false }
+bp-asset-hub-paseo = { package = "bp-asset-hub-paseo", path = "system-parachains/asset-hub-paseo/primitives", default-features = false }
+bp-bridge-hub-westend = { version = "0.4.0", default-features = false }
+westend-runtime-constants = { version = "0.8.0", default-features = false }
+bp-westend = { version = "0.4.0", default-features = false }
+
+
+
 [workspace]
 resolver = "2"
 
