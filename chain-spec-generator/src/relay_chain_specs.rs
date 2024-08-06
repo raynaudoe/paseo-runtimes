@@ -56,17 +56,17 @@ fn default_parachains_host_configuration() -> HostConfiguration<polkadot_primiti
 		group_rotation_frequency: 20,
 		paras_availability_period: 4,
 		max_upward_queue_count: 8,
-		max_upward_queue_size: 1024 * 1024,
-		max_downward_message_size: 1024 * 1024,
+		max_upward_queue_size: 65_531,
+		max_downward_message_size: 51_200,
 		max_upward_message_size: 50 * 1024,
 		max_upward_message_num_per_candidate: 5,
 		hrmp_sender_deposit: 0,
 		hrmp_recipient_deposit: 0,
-		hrmp_channel_max_capacity: 8,
-		hrmp_channel_max_total_size: 8 * 1024,
-		hrmp_max_parachain_inbound_channels: 4,
-		hrmp_channel_max_message_size: 1024 * 1024,
-		hrmp_max_parachain_outbound_channels: 4,
+		hrmp_channel_max_capacity: 1000,
+		hrmp_channel_max_total_size: 102400,
+		hrmp_max_parachain_inbound_channels: 30,
+		hrmp_channel_max_message_size: 102400,
+		hrmp_max_parachain_outbound_channels: 30,
 		hrmp_max_message_num_per_candidate: 5,
 		dispute_period: 6,
 		no_show_slots: 2,
@@ -139,7 +139,7 @@ pub fn get_authority_keys_from_seed_no_beefy(
 	seed: &str,
 ) -> (AccountId, AccountId, BabeId, GrandpaId, ValidatorId, AssignmentId, AuthorityDiscoveryId) {
 	(
-		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
+		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<BabeId>(seed),
 		get_from_seed::<GrandpaId>(seed),
@@ -228,6 +228,9 @@ pub fn paseo_testnet_genesis(
 		"sudo": {
 			"key": root_key,
 		},
+		"hrmp": {
+			"preopenHrmpChannels": Vec::from([(1000, 2000, 1000, 102400), (2000, 1000, 1000, 102400)]),
+		}
 	})
 }
 
