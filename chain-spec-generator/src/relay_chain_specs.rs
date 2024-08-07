@@ -229,7 +229,7 @@ pub fn paseo_testnet_genesis(
 			"key": root_key,
 		},
 		"hrmp": {
-			"preopenHrmpChannels": Vec::from([(1000, 2000, 1000, 102400), (2000, 1000, 1000, 102400)]),
+			"preopenHrmpChannels": Vec::<(u32,u32,u32,u32)>::new(),
 		}
 	})
 }
