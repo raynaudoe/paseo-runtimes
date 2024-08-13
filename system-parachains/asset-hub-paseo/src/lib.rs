@@ -982,8 +982,6 @@ mod benches {
 		[cumulus_pallet_dmp_queue, DmpQueue]
 		// XCM
 		[pallet_xcm, PalletXcmExtrinsiscsBenchmark::<Runtime>]
-		// Bridges
-		[pallet_xcm_bridge_hub_router, ToKusama]
 		// NOTE: Make sure you point to the individual modules below.
 		[pallet_xcm_benchmarks::fungible, XcmBalances]
 		[pallet_xcm_benchmarks::generic, XcmGeneric]
@@ -1260,7 +1258,6 @@ impl_runtime_apis! {
 			use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsiscsBenchmark;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
-			use pallet_xcm_bridge_hub_router::benchmarking::Pallet as XcmBridgeHubRouterBench;
 
 			// This is defined once again in dispatch_benchmark, because list_benchmarks!
 			// and add_benchmarks! are macros exported by define_benchmarks! macros and those types
@@ -1275,8 +1272,6 @@ impl_runtime_apis! {
 			type Local = pallet_assets::Pallet::<Runtime, TrustBackedAssetsInstance>;
 			type Foreign = pallet_assets::Pallet::<Runtime, ForeignAssetsInstance>;
 			type Pool = pallet_assets::Pallet::<Runtime, PoolAssetsInstance>;
-
-			type ToKusama = XcmBridgeHubRouterBench<Runtime, ToKusamaXcmRouterInstance>;
 
 			let mut list = Vec::<BenchmarkList>::new();
 			list_benchmarks!(list, extra);
