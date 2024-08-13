@@ -10,10 +10,13 @@ license.workspace = true
 clap = { features = [ "derive" ] , workspace = true }
 serde_json = { workspace = true }
 serde = { features = ["derive"] , workspace = true }
+hex-literal = "0.4.1"
 
 paseo-runtime = { path = "../relay/paseo" }
 paseo-runtime-constants = { path = "../relay/paseo/constants", default-features = true }
+asset-hub-paseo-runtime = { path = "../system-parachains/asset-hub-paseo" }
 
+sp-consensus-aura = { workspace = true }
 sc-chain-spec = { workspace = true }
 polkadot-runtime-parachains = { workspace = true, default-features = true }
 polkadot-primitives = { workspace = true, default-features = true }
@@ -34,10 +37,5 @@ fast-runtime = [
 ]
 runtime-benchmarks = [
 	"paseo-runtime/runtime-benchmarks",
-	"cumulus-primitives-core/runtime-benchmarks",
-	"pallet-staking/runtime-benchmarks",
-	"parachains-common/runtime-benchmarks",
-	"polkadot-primitives/runtime-benchmarks",
-	"polkadot-runtime-parachains/runtime-benchmarks",
-	"sp-runtime/runtime-benchmarks"
+	"asset-hub-paseo-runtime/runtime-benchmarks",
 ]

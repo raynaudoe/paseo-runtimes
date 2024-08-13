@@ -1003,8 +1003,10 @@ dependencies = [
 name = "chain-spec-generator"
 version = "1.0.0"
 dependencies = [
+ "asset-hub-paseo-runtime",
  "clap",
  "cumulus-primitives-core",
+ "hex-literal",
  "pallet-staking",
  "parachains-common",
  "paseo-runtime",
@@ -1016,6 +1018,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-authority-discovery",
+ "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-consensus-beefy",
  "sp-core",
