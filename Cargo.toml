@@ -3,7 +3,7 @@ version = "1.0.0"
 authors = ["Paseo Core Team"]
 edition = "2021"
 repository = "https://github.com/paseo-network/runtimes.git"
-license = "Apache License v2" # TODO
+license = "Apache License v2"                                # TODO
 
 [workspace.dependencies]
 assert_matches = { version = "1.5.0" }
@@ -190,10 +190,10 @@ paseo-runtime-constants = { package = "paseo-runtime-constants", path = "relay/p
 resolver = "2"
 
 members = [
-	"chain-spec-generator",
-	"relay/paseo",
-	"relay/paseo/constants",
-	"system-parachains/asset-hub-paseo"
+    "chain-spec-generator",
+    "relay/paseo",
+    "relay/paseo/constants",
+    "system-parachains/asset-hub-paseo",
 ]
 
 [profile.release]

@@ -48,6 +48,7 @@ pallet-utility = { workspace = true }
 sp-api = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-consensus-aura = { workspace = true }
+sp-debug-derive = { workspace = true }
 sp-core = { workspace = true }
 sp-genesis-builder = { workspace = true }
 sp-io = { workspace = true }
@@ -226,6 +227,7 @@ std = [
     "sp-block-builder/std",
     "sp-consensus-aura/std",
     "sp-core/std",
+    "sp-debug-derive/std",
     "sp-genesis-builder/std",
     "sp-inherents/std",
     "sp-offchain/std",
@@ -249,3 +251,4 @@ std = [
 on-chain-release-build = ["sp-api/disable-logging"]
 
 fast-runtime = []
+force-debug = ["sp-debug-derive/force-debug"]
