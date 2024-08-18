@@ -17,11 +17,11 @@
 
 use crate::common::{get_account_id_from_seed, get_from_seed, testnet_accounts};
 use cumulus_primitives_core::ParaId;
-use parachains_common::{AccountId, AuraId, Balance,AssetHubPolkadotAuraId};
+use hex_literal::hex;
+use parachains_common::{AccountId, AuraId, AuraId, Balance};
 use sc_chain_spec::{ChainSpec, ChainSpecExtension, ChainSpecGroup, ChainType};
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::UncheckedInto, sr25519};//use sp_keyring::AccountKeyring::{Alice, Bob, Charlie};
-use hex_literal::hex;
+use sp_core::{crypto::UncheckedInto, sr25519}; //use sp_keyring::AccountKeyring::{Alice, Bob, Charlie};
 
 /// Generic extensions for Parachain ChainSpecs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
@@ -43,41 +43,28 @@ const ASSET_HUB_PASEO_ED: Balance = asset_hub_paseo_runtime::ExistentialDeposit:
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
-pub fn invulnerables_asset_hub_paseo_local() -> Vec<(AccountId, AssetHubPolkadotAuraId)> {
+pub fn invulnerables_asset_hub_paseo_local() -> Vec<(AccountId, AuraId)> {
 	vec![
-		(
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_from_seed::<AssetHubPolkadotAuraId>("Alice"),
-		),
-		(
-			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_from_seed::<AssetHubPolkadotAuraId>("Bob"),
-		),
+		(get_account_id_from_seed::<sr25519::Public>("Alice"), get_from_seed::<AuraId>("Alice")),
+		(get_account_id_from_seed::<sr25519::Public>("Bob"), get_from_seed::<AuraId>("Bob")),
 	]
 }
-
-
-
 
 /// Generate the session keys from individual elements.
 ///
 /// The input must be a tuple of individual keys (a single arg for now since we have just one key).
-pub fn asset_hub_paseo_session_keys(
-	keys: AssetHubPolkadotAuraId,
-) -> asset_hub_paseo_runtime::SessionKeys {
+pub fn asset_hub_paseo_session_keys(keys: AuraId) -> asset_hub_paseo_runtime::SessionKeys {
 	asset_hub_paseo_runtime::SessionKeys { aura: keys }
 }
 
 // AssetHubPolkadot
 fn asset_hub_paseo_genesis(
-	invulnerables: Vec<(AccountId, AssetHubPolkadotAuraId)>,
+	invulnerables: Vec<(AccountId, AuraId)>,
 	endowed_accounts: Vec<AccountId>,
 	id: ParaId,
 ) -> asset_hub_paseo_runtime::RuntimeGenesisConfig {
 	asset_hub_paseo_runtime::RuntimeGenesisConfig {
-		system: asset_hub_paseo_runtime::SystemConfig {
-			..Default::default()
-		},
+		system: asset_hub_paseo_runtime::SystemConfig { ..Default::default() },
 		balances: asset_hub_paseo_runtime::BalancesConfig {
 			balances: endowed_accounts
 				.iter()
@@ -99,8 +86,8 @@ fn asset_hub_paseo_genesis(
 				.into_iter()
 				.map(|(acc, aura)| {
 					(
-						acc.clone(),                           // account id
-						acc,                                   // validator id
+						acc.clone(),                        // account id
+						acc,                                // validator id
 						asset_hub_paseo_session_keys(aura), // session keys
 					)
 				})
@@ -122,8 +109,7 @@ fn asset_hub_paseo_genesis(
 	}
 }
 
-fn asset_hub_paseo_local_genesis(
-) -> asset_hub_paseo_runtime::RuntimeGenesisConfig {
+fn asset_hub_paseo_local_genesis() -> asset_hub_paseo_runtime::RuntimeGenesisConfig {
 	asset_hub_paseo_genesis(
 		// initial collators.
 		invulnerables_asset_hub_paseo_local(),
@@ -154,6 +140,6 @@ pub fn asset_hub_paseo_local_testnet_config() -> Result<Box<dyn ChainSpec>, Stri
 		None,
 		Some(properties),
 		Extensions { relay_chain: "paseo-local".into(), para_id: 1000 },
-		wasm_binary
+		wasm_binary,
 	)))
 }
