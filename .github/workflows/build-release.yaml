@@ -27,7 +27,7 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
         env:
-          GITHUB_TOKEN: ${{ secrets.PASEO_RUNTIME_CI_PAT }}
+          GITHUB_TOKEN: ${{ secrets.TEST_SECRET }}
 
       - name: Create and push tag
         run: |
@@ -121,4 +121,4 @@ jobs:
             ${{ steps.srtool_build.outputs.wasm_compressed }}
             ${{ matrix.runtime.name }}-srtool-digest.json
         env:
-          GITHUB_TOKEN: ${{ secrets.PASEO_RUNTIME_CI_PAT }}
+          GITHUB_TOKEN: ${{ secrets.TEST_SECRET }}
